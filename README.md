@@ -13,7 +13,7 @@
 
 
 # Secrets Management
-In the course [Network Security in Practice](https://hpi.de/studium/lehrveranstaltungen/it-systems-engineering-ma/lehrveranstaltung/course/0/wintersemester-20182019-network-security-in-practice.html) at Hasso-Plattner Institute, we chose the topic Secrets Management to tackle the question of how secrets can be distributed, updated, and revoked in a highly distributed world. The technical report can be found [here](report/NSIP_2019_Secrets_Management.pdf).
+In the course [Network Security in Practice](https://hpi.de/studium/lehrveranstaltungen/it-systems-engineering-ma/lehrveranstaltung/course/0/wintersemester-20182019-network-security-in-practice.html) at Hasso-Plattner Institute, we chose the topic Secrets Management to tackle the question of how secrets can be distributed, updated, and revoked in a highly distributed world. The technical report can be found [here](documentation/nsip_report_secrets_management.pdf).
 
 # Pre-installation requirements
 In order to follow the practical examples given in the report, you should `clone` this repository and have `docker` properly installed.
@@ -115,7 +115,7 @@ Now we are able to login using the route token.
 
 ## Dynamic credentials
 
-In order to create dynamic credentials on demand, we need to setup the Database Secrets Engine first. We described the architecture to this scenario in our [report](report/NSIP_2019_Secrets_Management.pdf).
+In order to create dynamic credentials on demand, we need to setup the Database Secrets Engine first. We described the architecture to this scenario in our [report](documentation/nsip_report_secrets_management.pdf).
 
 ```bash
 $ vault secrets enable database
@@ -164,7 +164,7 @@ Vault has generated a username and password that we can use to login to the data
 
 ## Secure introduction
 
-Let's assume that we want to deploy an application with a static username and password. We might, for example, be connecting to a database that is not supported by the database secrets engine. How do we securely automate the process of delivering secrets to an application on deployment? We refer again to our [report](report/NSIP_2019_Secrets_Management.pdf) to get a more detailed overview of the applied architecture. But in general, we want to deploy credentials from Vault to a Jenkins server automatically.
+Let's assume that we want to deploy an application with a static username and password. We might, for example, be connecting to a database that is not supported by the database secrets engine. How do we securely automate the process of delivering secrets to an application on deployment? We refer again to our [report](documentation/nsip_report_secrets_management.pdf) to get a more detailed overview of the applied architecture. But in general, we want to deploy credentials from Vault to a Jenkins server automatically.
 
 The first thing we need to do is to install the Jenkins Vault plug-in by HashiCorp. The next steps involve Vault to enable Jenkins to authenticate: 
 
