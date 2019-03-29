@@ -148,3 +148,63 @@ username           v-token-datareader-NrUg6RnIZX46o
 
 Vault has generated a username and password that we can use to login to the database using the `MySQL CLI` to connect to the `MariaDB` database. If we try to create a database, the access is denied. The `datareader` does not have permissions to write data. But if we repeat these steps with the `datawriter`, we are able to manipulate data. 
 
+## Secure Introduction
+
+Let's assume that we want to deploy an application with a static username and password. We might, for example, be connecting to a database that is not supported by the database secrets engine. How do we securely automate the process of delivering secrets to an application on deployment? We refer again to our [report](report/NSIP_2019_Secrets_Management.pdf) to get a more detailed overview of the applied architecture. But in general, we want to deploy credentials from Vault to a Jenkins server automatically.
+
+The first thing we need to do is to install the Jenkins Vault plug-in by HashiCorp. The next steps involve Vault to enable Jenkins to authenticate: 
+
+```bash
+# Enable secrets engine
+$ vault secrets enable -path=secret kv
+Success! Enabled the kv secrets engine at: secret/
+
+# Save demo credentials to Vault
+$ vault kv put secret/nsip/demo username=dbUser
+Success! Data written to: secret/nsip/demo
+
+# Enable the approle authentication method 
+$ vault auth enable approle
+Success! Enabled approle auth method at: approle/
+```
+
+The next step is to upload a [policy](jenkins/jenkins_policy.hcl) that Jenkins can use to authenticate with approle and to read the secret. The two paths give the policy the ability to log in with approle and to read the path in the secrets engine where we saved our secret:
+
+```bash
+# Upload policy to Vault
+$ vault policy write jenkins jenkins_policy.hcl
+Success! Uploaded policy: jenkins
+
+# Create a authentication role for Jenkins
+$ vault write auth/approle/role/jenkins policies=jenkins
+Success! Data written to: auth/approle/role/jenkins
+
+# Get role ID for Jenkins analogous to a username
+$ vault read auth/approle/role/jenkins/role-id
+Key        Value
+---        -----
+role_id    9ffdab4c-2971-e0f5-039f-1490578cd283
+
+# Get secret ID for Jenkins
+vault write -f auth/approle/role/jenkins/secret-id
+---                   -----
+secret_id             fb0d010d-d613-758e-c8c3-8793f768e2ae
+secret_id_accessor    39dfceb5-71b0-8193-3a62-986aff2af1ad
+```
+
+Now we can add these credentials to Jenkins and create a new freestyle project. We enable the Vault plugin within the build environment with the following configuration:
+
+```
+Vault Url: http://vaultserver:8200
+Path: secret/nsip/demo
+Environment variable: NSIP_SECRET
+Keyname: username
+```
+
+To demonstrate that Jenkins is able to access the secret, we use a build step: 
+
+```bash
+echo $NSIP_SECRET > secret.txt
+```
+
+When we build the job, we have the `secret.txt`in our workspace. This was written by the script that we added and we can see our value for our secret written to this file. From here, we can use our imagination, these secrets can be injected into a container. Written to a configuration file, any variety of different mechanisms to inject the secret into an application.
