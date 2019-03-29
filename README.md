@@ -1,3 +1,17 @@
+# Table of Contents
+* [Secrets Management](#secrets-management)
+* [Requirements](#pre-installation-requirements)
+* [Setup](#setup)
+  * [How to connect - SSH](#how-to-connect---ssh)
+  * [How to connect - Jenkins](#how-to-connect---jenkins)
+* [Practicals](#practicals)
+  * [Initializing and unsealing a Vault server](#initializing-and-unsealing-a-vault-server)
+  * [Dynamic credentials](#dynamic-credentials)
+    * [Policies and credentials with the database secrets engine](#policies-and-credentials-with-the-database-secrets-engine)
+  * [Secure introduction](#secure-introduction)
+  * [Response wrapping](#response-wrapping)
+
+
 # Secrets Management
 In the course [Network Security in Practice](https://hpi.de/studium/lehrveranstaltungen/it-systems-engineering-ma/lehrveranstaltung/course/0/wintersemester-20182019-network-security-in-practice.html) at Hasso-Plattner Institute, we chose the topic Secrets Management to tackle the question of how secrets can be distributed, updated, and revoked in a highly distributed world. The technical report can be found [here](report/NSIP_2019_Secrets_Management.pdf).
 
@@ -99,7 +113,7 @@ HA Enabled      false
 
 Now we are able to login using the route token.
 
-## Dynamic Credentials
+## Dynamic credentials
 
 In order to create dynamic credentials on demand, we need to setup the Database Secrets Engine first. We described the architecture to this scenario in our [report](report/NSIP_2019_Secrets_Management.pdf).
 
@@ -148,7 +162,7 @@ username           v-token-datareader-NrUg6RnIZX46o
 
 Vault has generated a username and password that we can use to login to the database using the `MySQL CLI` to connect to the `MariaDB` database. If we try to create a database, the access is denied. The `datareader` does not have permissions to write data. But if we repeat these steps with the `datawriter`, we are able to manipulate data. 
 
-## Secure Introduction
+## Secure introduction
 
 Let's assume that we want to deploy an application with a static username and password. We might, for example, be connecting to a database that is not supported by the database secrets engine. How do we securely automate the process of delivering secrets to an application on deployment? We refer again to our [report](report/NSIP_2019_Secrets_Management.pdf) to get a more detailed overview of the applied architecture. But in general, we want to deploy credentials from Vault to a Jenkins server automatically.
 
@@ -186,7 +200,7 @@ Key        Value
 role_id    9ffdab4c-2971-e0f5-039f-1490578cd283
 
 # Get secret ID for Jenkins
-vault write -f auth/approle/role/jenkins/secret-id
+$ vault write -f auth/approle/role/jenkins/secret-id
 ---                   -----
 secret_id             fb0d010d-d613-758e-c8c3-8793f768e2ae
 secret_id_accessor    39dfceb5-71b0-8193-3a62-986aff2af1ad
@@ -209,7 +223,7 @@ echo $NSIP_SECRET > secret.txt
 
 When we build the job, we have the `secret.txt`in our workspace. This was written by the script that we added and we can see our value for our secret written to this file. From here, we can use our imagination, these secrets can be injected into a container. Written to a configuration file, any variety of different mechanisms to inject the secret into an application.
 
-## Response Wrapping
+## Response wrapping
 
 If we use the `vault token create` command, it will return a token that we can use associated with a policy to authenticate to Vault: 
 
