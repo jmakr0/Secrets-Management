@@ -208,3 +208,50 @@ echo $NSIP_SECRET > secret.txt
 ```
 
 When we build the job, we have the `secret.txt`in our workspace. This was written by the script that we added and we can see our value for our secret written to this file. From here, we can use our imagination, these secrets can be injected into a container. Written to a configuration file, any variety of different mechanisms to inject the secret into an application.
+
+## Response Wrapping
+
+If we use the `vault token create` command, it will return a token that we can use associated with a policy to authenticate to Vault: 
+
+```bash
+$ vault token create
+Key                  Value
+---                  -----
+token                s.hH4FyBKpj1E9WHSPhjFsxiTc
+token_accessor       fTomhUqKt1VBd8eFl0e5aSW2
+token_duration       ∞
+token_renewable      false
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]
+```
+
+Response wrapping uses the cubbyhole secrets engine and instead of returning the token that we used to authenticate, we get a temporary token called a wrapping token. The way to do that is to execute the same command with a different parameter:
+
+```bash
+$ vault token create -wrap-ttl=5m -policy=jenkins
+Key                              Value
+---                              -----
+wrapping_token:                  s.CSI8ZXFkJr7HFQSiUTM9LQV1
+wrapping_accessor:               RDVL7Pg5L7rsJwmKFnA47DdO
+wrapping_token_ttl:              5m
+wrapping_token_creation_time:    2019-03-29 10:07:31.5555671 +0000 UTC
+wrapping_token_creation_path:    auth/token/create
+wrapped_accessor:                WoWP9PMZchJcbN06PbfgiRaQ
+```
+This tells Vault to return a wrapping token and put the actual token into a cubbyhole for us to retrieve later. We can unwrap this by executing: 
+
+```bash
+$ vault unwrap s.CSI8ZXFkJr7HFQSiUTM9LQV1
+Key                  Value
+---                  -----
+token                s.dzJcBRdnB3H6TvQR9Ilx9zd8
+token_accessor       WoWP9PMZchJcbN06PbfgiRaQ
+token_duration       ∞
+token_renewable      false
+token_policies       ["root"]
+identity_policies    []
+policies             ["root"]
+```
+
+We get the actual token form the cubbyhole. Vault has now destroyed that cubbyhole. So the only location this token exists here is in our output. This gives an idea of how response wrapping can be used to add security for secure introduction. Jenkins or some other CI tool can request a wrapping token and inject that into an application build. The application can then use the wrapping token to unwrap the actual secret and store it in memory. Under those circumstances, the only place the actual token ever exists are in the cubbyhole and then in the application's memory.
