@@ -1,5 +1,5 @@
 # Secrets Management
-In the course [Network Security in Practice](https://hpi.de/studium/lehrveranstaltungen/it-systems-engineering-ma/lehrveranstaltung/course/0/wintersemester-20182019-network-security-in-practice.html) at Hasso-Plattner Institute, we chose the topic Secrets Management to tackle the question of how secrets can be distributed, updated, and revoked in a highly distributed world. The technical report can be found [here](FIX_THIS_LINK).
+In the course [Network Security in Practice](https://hpi.de/studium/lehrveranstaltungen/it-systems-engineering-ma/lehrveranstaltung/course/0/wintersemester-20182019-network-security-in-practice.html) at Hasso-Plattner Institute, we chose the topic Secrets Management to tackle the question of how secrets can be distributed, updated, and revoked in a highly distributed world. The technical report can be found [here](report/NSIP_2019_Secrets_Management.pdf).
 
 # Pre-installation requirements
 In order to follow the practical examples given in the report, you should `clone` this repository and have `docker` properly installed.
@@ -101,4 +101,50 @@ Now we are able to login using the route token.
 
 ## Dynamic Credentials
 
+In order to create dynamic credentials on demand, we need to setup the Database Secrets Engine first. We described the architecture to this scenario in our [report](report/NSIP_2019_Secrets_Management.pdf).
+
+```bash
+$ vault secrets enable database
+Success! Enabled the database secrets engine at: database/
+```
+
+The next set of commands are rather lengthy, so we saved them in [setup\_commands.txt](mariadb/setup_commands.txt) under the `mariadb-folder`. The first command, writes a configuration to the database secrets engine. The path is `database/config/nsip-mariadb`, which is the name we have given to this configuration. The plug-in name is `mysql-database-plugin`, which is compatible with `mariadb`. The connection URL, is a templated connection string that is used by Vault to connect to the database. The username and password are injected when vault calls out to the database. `Mariadb:3306` is the URL. The `allowed_roles` are `datareader` and `datawriter`, which we will be using to connect to the database. These are the roles that are allowed to create credentials using this configuration, and the username and password, `root` and `mysql`, are the username and password to the mysql database used to make the connection. 
+
+The next two commands create roles in the database secrets engine. The path here is `database/roles/datareader`, which is the name of the role. The db name `nsip-mariadb`, matches the configuration we created earlier. The creation statement, is this statement that is used to create the user in the database when credentials are generated, `CREATE USER '{{name}}', IDENTIFIED BY '{{password}}, GRANT SELECT}`. Grant select is a SQL command that grants read only access to a database. The `datawriter` is similar, except in this case it grants all, which is create, read, update, and delete. The next two parameters are the default time to live, and the max time to live. These tokens have a default time to live of one hour, which can be renewed up to 24 hours.
+
+### Policies and credentials with the database secrets engine
+
+Our next step is to upload `policies` for the [datareader](mariadb/datareader.hcl) and [datawriter]((mariadb/datawriter.hcl)). They're essentially the same, they both grant access to the path in the database secrets engine that generates the credentials. We can upload them and create credentials with the following commands:
+
+```bash
+$ vault policy write datareader datareader.hcl
+Success! Uploaded policy: datareader
+
+$ vault policy write datawriter datawriter.hcl
+Success! Uploaded policy: datawriter
+
+# Create a token for this role
+$ vault token create -policy=datareader
+Key                  Value
+---                  -----
+token                s.dZO7MF7oGlThDOfHLwP7wxuE
+token_accessor       1Vv62YCBFnit20ciUMgRPSbO
+token_duration       768h
+token_renewable      true
+token_policies       ["datareader" "default"]
+identity_policies    []
+policies             ["datareader" "default"]
+
+# Login in as the datareader and generate credentials
+$ vault read database/creds/datareader
+Key                Value
+---                -----
+lease_id           database/creds/datareader/WWblpx3...
+lease_duration     1h
+lease_renewable    true
+password           A1a-4zmkaOvK6PTD9izI
+username           v-token-datareader-NrUg6RnIZX46o
+```
+
+Vault has generated a username and password that we can use to login to the database using the `MySQL CLI` to connect to the `MariaDB` database. If we try to create a database, the access is denied. The `datareader` does not have permissions to write data. But if we repeat these steps with the `datawriter`, we are able to manipulate data. 
 
